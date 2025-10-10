@@ -3,6 +3,6 @@ gunicorn==21.2.0
 redis==4.5.5
 requests==2.31.0
 opencv-python==4.8.0.74
-mediapipe==0.10.3
+mediapipe
 stripe==5.4.0
 openai-whisper==20230314
