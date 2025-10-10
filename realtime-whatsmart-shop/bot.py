@@ -115,38 +115,28 @@ def bg_refresh():
 threading.Thread(target=bg_refresh, daemon=True).start()
 
 # --------------------  INDIA UPI PAYMENT  --------------------
-RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
-RAZORPAY_SECRET = os.getenv("RAZORPAY_SECRET")
+import stripe
+stripe.api_key = os.getenv("STRIPE_SECRET")
 
-def create_upi_order(phone, amount):
-    url = "https://api.razorpay.com/v1/orders"
-    auth = (RAZORPAY_KEY_ID, RAZORPAY_SECRET)
-    payload = {
-        "amount": int(amount * 100),
-        "currency": "INR",
-        "method": "upi",
-        "receipt": f"{phone}_{int(time.time())}",
-        "notes": {"phone": phone}
-    }
-    resp = requests.post(url, json=payload, auth=auth).json()
-    order_id = resp["id"]
-    # UPI intent deeplink (change to your VPA)
-    upi_link = f"upi://pay?pa=YOUR_VPA@paytm&pn=YourShop&am={amount}&cu=INR&tn=Order{order_id[-6:]}"
-    # QR code
-    qr = requests.post("https://api.razorpay.com/v1/payments/qr_codes",
-                       json={"type": "upi_qr", "name": order_id, "usage": "single_order"},
-                       auth=auth).json()
-    qr_b64 = qr["image_url"]
-    return {"link": upi_link, "qr": qr_b64, "order_id": order_id}
-
-def check_payment(order_id):
-    auth = (RAZORPAY_KEY_ID, RAZORPAY_SECRET)
-    resp = requests.get(f"https://api.razorpay.com/v1/orders/{order_id}/payments", auth=auth).json()
-    for p in resp.get("items", []):
-        if p["status"] == "captured":
-            return True
-    return False
-
+def create_stripe_checkout(phone, amount):
+    # 1. Create Checkout Session (UPI + Cards)
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card", "upi"],
+        line_items=[{
+            "price_data": {
+                "currency": "inr",
+                "product_data": {"name": "WhatsApp order"},
+                "unit_amount": int(amount * 100)   # paisa
+            },
+            "quantity": 1
+        }],
+        mode="payment",
+        success_url="https://your-app.onrender.com/success?session_id={CHECKOUT_SESSION_ID}",
+        cancel_url="https://your-app.onrender.com/cancel",
+        metadata={"phone": phone}
+    )
+    # 2. Return pay link + QR (same format as before)
+    return {"link": session.url, "qr": f"https://api.qrserver.com/v1/create-qr-code/?data={session.url}&size=200x200", "session_id": session.id}
 # --------------------  CART  --------------------
 def cart_key(phone): return f"cart:{phone}"
 def add_cart(phone, product_id):
