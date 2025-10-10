@@ -6,3 +6,5 @@ opencv-python==4.8.0.74
 mediapipe==0.10.3
 stripe==5.4.0
 openai-whisper==20230314
+python-dotenv==1.0.0
+twilio==9.0.0
