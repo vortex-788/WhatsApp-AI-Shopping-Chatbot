@@ -1,1 +1,8 @@
-
+Flask
+gunicorn
+redis
+requests
+opencv-python
+mediapipe
+stripe
+openai-whisper
