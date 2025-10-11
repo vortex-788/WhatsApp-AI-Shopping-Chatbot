@@ -164,6 +164,10 @@ def show_cart(phone):
 
 # --------------------  AR TRY-ON  --------------------
 mp_pose = mp.solutions.pose
+import cv2
+import numpy as np
+import requests
+
 def overlay_shoes(user_img_url, product_png_url):
     """
     OpenCV-only AR try-on (no Mediapipe)
