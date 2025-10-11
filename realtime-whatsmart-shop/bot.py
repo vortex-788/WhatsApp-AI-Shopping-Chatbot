@@ -165,21 +165,27 @@ def show_cart(phone):
 # --------------------  AR TRY-ON  --------------------
 mp_pose = mp.solutions.pose
 def overlay_shoes(user_img_url, product_png_url):
+    """
+    OpenCV-only AR try-on (no Mediapipe)
+    Places shoes at bottom-center of image
+    """
+    # 1. Download images
     img   = cv2.imdecode(np.frombuffer(requests.get(user_img_url).content, np.uint8), cv2.IMREAD_COLOR)
     shoes = cv2.imdecode(np.frombuffer(requests.get(product_png_url).content, np.uint8), cv2.IMREAD_UNCHANGED)
-    with mp_pose.Pose(static_image_mode=True) as pose:
-        results = pose.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        if not results.pose_landmarks: return None
-        h, w = img.shape[:2]
-        heel = int(results.pose_landmarks.landmark[30].y * h), int(results.pose_landmarks.landmark[30].x * w)
-        shoes = cv2.resize(shoes, (160, 80))
-        x, y = heel[1] - 80, heel[0] - 40
-        alpha = shoes[:, :, 3] / 255.0
-        for c in range(3):
-            img[y:y + 80, x:x + 160, c] = alpha * shoes[:, :, c] + (1 - alpha) * img[y:y + 80, x:x + 160, c]
-        ok, buf = cv2.imencode('.jpg', img)
-        return buf.tobytes()
 
+    # 2. Bottom-center placement (no pose library)
+    h, w = img.shape[:2]
+    shoes = cv2.resize(shoes, (160, 80))
+    x, y = (w - 160) // 2, h - 80 - 20   # bottom-center, 20 px margin
+
+    # 3. Alpha blend
+    alpha = shoes[:, :, 3] / 255.0
+    for c in range(3):
+        img[y:y + 80, x:x + 160, c] = alpha * shoes[:, :, c] + (1 - alpha) * img[y:y + 80, x:x + 160, c]
+
+    # 4. Return PNG bytes
+    ok, buf = cv2.imencode('.png', img)
+    return buf.tobytes()
 # --------------------  WEBHOOK  --------------------
 @app.route("/webhook", methods=["GET"])
 def verify():
