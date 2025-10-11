@@ -24,44 +24,52 @@ OWNER_PHONE    = os.getenv("OWNER_PHONE")
 SHEET_CSV = os.getenv("SHEET_CSV")  # publish-to-web link
 
 # --------------------  WHATSAPP SEND  --------------------
-def send_whatsapp(to, kind="text", text=None, image=None, buttons=None):
-    url  = f"https://graph.facebook.com/v18.0/{PHONE_ID}/messages"
-    hdr  = {"Authorization": f"Bearer {ACCESS_TOKEN}", "Content-Type": "application/json"}
-    payload = {"messaging_product": "whatsapp", "recipient_type": "individual", "to": to}
-    if kind == "text":
-        payload["type"] = "text"; payload["text"] = {"body": text}
-    elif kind == "image":
-        payload["type"] = "image"; payload["image"] = {"link": image}
-    elif kind == "buttons":
-        payload["type"] = "interactive"
-        payload["interactive"] = {"type": "button", "body": {"text": text}, "action": {"buttons": buttons}}
-    requests.post(url, headers=hdr, json=payload)
+from twilio.rest import Client
 
+def send_whatsapp(to, kind="text", text=None, image=None, buttons=None):
+    client = Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
+    from_ = os.getenv("TWILIO_WHATSApp_NUMBER")
+    to = f"whatsapp:{to}"
+
+    if kind == "text":
+        return client.messages.create(body=text, from_=from_, to=to).sid
+    elif kind == "image":
+        return client.messages.create(media_url=[image], from_=from_, to=to).sid
+    elif kind == "buttons":
+        return client.messages.create(
+            body=text,
+            from_=from_,
+            to=to,
+            interactive={
+                "type": "button",
+                "action": {"buttons": [{"type": "reply", "title": b["reply"]["title"], "id": b["reply"]["id"]} for b in buttons]}
+            }
+        ).sid
 # --------------------  REAL-TIME DATA  --------------------
-def fetch_shopify():
-    if not SHOPIFY_TOKEN: return []
-    q = """{ products(first: 20) {
-        edges { node {
-            id title vendor
-            images(first:1) { edges { node { url } } }
-            variants(first:1) { edges { node { price quantityAvailable } } }
-        } }
-    } }"""
-    resp = requests.post(f"https://{SHOPIFY_DOMAIN}/api/2023-10/graphql.json",
-                         json={"query": q},
-                         headers={"X-Shopify-Storefront-Access-Token": SHOPIFY_TOKEN}).json()
-    prods = []
-    for e in resp["data"]["products"]["edges"]:
-        n = e["node"]
-        prods.append({
-            "id": n["id"].split("/")[-1],
-            "name": n["title"],
-            "price": float(n["variants"]["edges"][0]["node"]["price"]),
-            "stock": n["variants"]["edges"][0]["node"]["quantityAvailable"],
-            "image": n["images"]["edges"][0]["node"]["url"] if n["images"]["edges"] else "",
-            "vendor": "shopify"
-        })
-    return prods
+# def fetch_shopify():
+#     if not SHOPIFY_TOKEN: return []
+#     q = """{ products(first: 20) {
+#         edges { node {
+#             id title vendor
+#             images(first:1) { edges { node { url } } }
+#             variants(first:1) { edges { node { price quantityAvailable } } }
+#         } }
+#     } }"""
+#     resp = requests.post(f"https://{SHOPIFY_DOMAIN}/api/2023-10/graphql.json",
+#                          json={"query": q},
+#                          headers={"X-Shopify-Storefront-Access-Token": SHOPIFY_TOKEN}).json()
+#     prods = []
+#     for e in resp["data"]["products"]["edges"]:
+#         n = e["node"]
+#         prods.append({
+#             "id": n["id"].split("/")[-1],
+#             "name": n["title"],
+#             "price": float(n["variants"]["edges"][0]["node"]["price"]),
+#             "stock": n["variants"]["edges"][0]["node"]["quantityAvailable"],
+#             "image": n["images"]["edges"][0]["node"]["url"] if n["images"]["edges"] else "",
+#             "vendor": "shopify"
+#         })
+#     return prods
 
 def fetch_google_shopping(query):
     if not GOOGLE_KEY: return []
