@@ -163,7 +163,6 @@ def show_cart(phone):
     return total
 
 # --------------------  AR TRY-ON  --------------------
-mp_pose = mp.solutions.pose
 import cv2
 import numpy as np
 import requests
@@ -177,10 +176,10 @@ def overlay_shoes(user_img_url, product_png_url):
     img   = cv2.imdecode(np.frombuffer(requests.get(user_img_url).content, np.uint8), cv2.IMREAD_COLOR)
     shoes = cv2.imdecode(np.frombuffer(requests.get(product_png_url).content, np.uint8), cv2.IMREAD_UNCHANGED)
 
-    # 2. Bottom-center placement (no pose library)
+    # 2. Bottom-center placement
     h, w = img.shape[:2]
     shoes = cv2.resize(shoes, (160, 80))
-    x, y = (w - 160) // 2, h - 80 - 20   # bottom-center, 20 px margin
+    x, y = (w - 160) // 2, h - 80 - 20
 
     # 3. Alpha blend
     alpha = shoes[:, :, 3] / 255.0
@@ -190,6 +189,7 @@ def overlay_shoes(user_img_url, product_png_url):
     # 4. Return PNG bytes
     ok, buf = cv2.imencode('.png', img)
     return buf.tobytes()
+
 # --------------------  WEBHOOK  --------------------
 @app.route("/webhook", methods=["GET"])
 def verify():
